@@ -4,82 +4,78 @@ const cors = require("cors");
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
+const { v4: uuidv4 } = require("uuid");
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// ✅ Allow requests from any origin (or restrict if you want)
-app.use(
-  cors({
-    origin: "*", // change to ["http://127.0.0.1:5500", "https://your-frontend.com"] if needed
-  })
-);
-
+app.use(cors());
 app.use(express.json());
-app.use(express.static("public"));
 
-// ElevenLabs API Key
-const ELEVEN_API_KEY = process.env.ELEVEN_API_KEY;
-
-// Default voice if none provided
-const DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"; // Rachel
-
-// Map your fake celebrity voices to available free voice IDs
+// Voice ID mapping
 const voiceMap = {
-  "TM:default": "21m00Tcm4TlvDq8ikWAM", // Rachel
-  "TM:drake": "21m00Tcm4TlvDq8ikWAM",
-  "TM:kanye": "AZnzlk1XvdvUeBnXmlld", // Domi
-  "TM:obama": "EXAVITQu4vr4xnSDxMaL", // Bella
-  "TM:mrbeast": "MF3mGyEYCl7XYWbV9V6O",
-  "TM:elon": "21m00Tcm4TlvDq8ikWAM",
-  "TM:trump": "AZnzlk1XvdvUeBnXmlld",
+  "TM:default": "EXAVITQu4vr4xnSDxMaL", // Replace with real voice_id from ElevenLabs
+  "TM:drake": "EXAVITQu4vr4xnSDxMaL",
+  "TM:kanye": "EXAVITQu4vr4xnSDxMaL",
+  "TM:obama": "EXAVITQu4vr4xnSDxMaL",
+  "TM:mrbeast": "EXAVITQu4vr4xnSDxMaL",
+  "TM:elon": "EXAVITQu4vr4xnSDxMaL",
+  "TM:trump": "EXAVITQu4vr4xnSDxMaL",
   "TM:freeman": "EXAVITQu4vr4xnSDxMaL",
-  "TM:biden": "MF3mGyEYCl7XYWbV9V6O",
+  "TM:biden": "EXAVITQu4vr4xnSDxMaL",
   "TM:tate": "EXAVITQu4vr4xnSDxMaL",
-  "TM:rock": "21m00Tcm4TlvDq8ikWAM",
-
+  "TM:rock": "EXAVITQu4vr4xnSDxMaL",
   "TM:adele": "EXAVITQu4vr4xnSDxMaL",
-  "TM:taylor": "AZnzlk1XvdvUeBnXmlld",
-  "TM:beyonce": "MF3mGyEYCl7XYWbV9V6O",
-  "TM:cardi": "AZnzlk1XvdvUeBnXmlld",
-  "TM:nicki": "21m00Tcm4TlvDq8ikWAM",
+  "TM:taylor": "EXAVITQu4vr4xnSDxMaL",
+  "TM:beyonce": "EXAVITQu4vr4xnSDxMaL",
+  "TM:cardi": "EXAVITQu4vr4xnSDxMaL",
+  "TM:nicki": "EXAVITQu4vr4xnSDxMaL",
   "TM:rihanna": "EXAVITQu4vr4xnSDxMaL",
-  "TM:angelina": "MF3mGyEYCl7XYWbV9V6O",
-  "TM:emma": "AZnzlk1XvdvUeBnXmlld",
+  "TM:angelina": "EXAVITQu4vr4xnSDxMaL",
+  "TM:emma": "EXAVITQu4vr4xnSDxMaL",
   "TM:queen": "EXAVITQu4vr4xnSDxMaL",
-  "TM:oprah": "21m00Tcm4TlvDq8ikWAM",
+  "TM:oprah": "EXAVITQu4vr4xnSDxMaL"
 };
 
-// POST /api/tts - Generate speech
+// ElevenLabs API key
+const elevenApiKey = process.env.ELEVENLABS_API_KEY;
+
 app.post("/api/tts", async (req, res) => {
+  const { text, voiceId } = req.body;
+  const actualVoiceId = voiceMap[voiceId] || voiceMap["TM:default"];
+
+  if (!text || !actualVoiceId) {
+    return res.status(400).json({ error: "Missing text or voice ID" });
+  }
+
   try {
-    const { text, voiceId } = req.body;
-
-    const resolvedVoice = voiceMap[voiceId] || DEFAULT_VOICE_ID;
-
     const response = await axios({
       method: "POST",
-      url: `https://api.elevenlabs.io/v1/text-to-speech/${resolvedVoice}`,
+      url: `https://api.elevenlabs.io/v1/text-to-speech/${actualVoiceId}`,
       headers: {
-        "xi-api-key": ELEVEN_API_KEY,
-        "Content-Type": "application/json",
-        "Accept": "audio/mpeg",
-      },
-      data: {
-        text: text || "Hello, world!",
-        voice_settings: {
-          stability: 0.75,
-          similarity_boost: 0.75,
-        },
+        "xi-api-key": elevenApiKey,
+        "Content-Type": "application/json"
       },
       responseType: "arraybuffer",
+      data: {
+        text,
+        model_id: "eleven_monolingual_v1",
+        voice_settings: {
+          stability: 0.3,
+          similarity_boost: 0.7
+        }
+      }
     });
 
-    const audioPath = path.join(__dirname, "public", "output.mp3");
-    fs.writeFileSync(audioPath, response.data);
-    res.json({ success: true, url: "/output.mp3" });
+    const fileName = uuidv4() + ".mp3";
+    const filePath = path.join(__dirname, fileName);
+    fs.writeFileSync(filePath, response.data);
+    res.sendFile(filePath, () => {
+      fs.unlinkSync(filePath); // delete after sending
+    });
   } catch (err) {
-    console.error(err.response?.data || err.message);
-    res.status(500).json({ success: false, message: "Failed to generate voice." });
+    console.error("❌ TTS Error:", err.response?.data || err.message);
+    res.status(500).json({ error: "Failed to generate voice" });
   }
 });
 
