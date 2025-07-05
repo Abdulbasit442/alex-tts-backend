@@ -1,86 +1,88 @@
-// server.js
+require("dotenv").config();
 const express = require("express");
-const axios = require("axios");
 const cors = require("cors");
-const dotenv = require("dotenv");
-const rateLimit = require("express-rate-limit");
-
-dotenv.config();
+const axios = require("axios");
+const fs = require("fs");
+const path = require("path");
 const app = express();
-const port = process.env.PORT || 5000;
-app.use(cors());
+const PORT = process.env.PORT || 5000;
+
+// ✅ Allow requests from any origin (or restrict if you want)
+app.use(
+  cors({
+    origin: "*", // change to ["http://127.0.0.1:5500", "https://your-frontend.com"] if needed
+  })
+);
+
 app.use(express.json());
+app.use(express.static("public"));
 
-// In-memory IP-based character usage tracking
-const charUsage = {}; // e.g. { "127.0.0.1": 754 }
+// ElevenLabs API Key
+const ELEVEN_API_KEY = process.env.ELEVEN_API_KEY;
 
-// 🎤 Celebrity voice ID mappings (fictional or realistic)
-const CELEB_VOICES = {
-  "TM:default": "21m00Tcm4TlvDq8ikWAM",
-  "TM:drake": "AZnzlk1XvdvUeBnXmlld",
-  "TM:kanye": "EXAVITQu4vr4xnSDxMaL",
-  "TM:obama": "ErXwobaYiN019PkySvjV",
+// Default voice if none provided
+const DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"; // Rachel
+
+// Map your fake celebrity voices to available free voice IDs
+const voiceMap = {
+  "TM:default": "21m00Tcm4TlvDq8ikWAM", // Rachel
+  "TM:drake": "21m00Tcm4TlvDq8ikWAM",
+  "TM:kanye": "AZnzlk1XvdvUeBnXmlld", // Domi
+  "TM:obama": "EXAVITQu4vr4xnSDxMaL", // Bella
   "TM:mrbeast": "MF3mGyEYCl7XYWbV9V6O",
-  "TM:elon": "TxGEqnHWrfWFTfGW9XjX",
-  "TM:trump": "VR6AewLTigWG4xSOukaG",
-  "TM:freeman": "pNInz6obpgDQGcFmaJgB",
-  "TM:biden": "yoZ06aMxZJJ28mfd3POQ",
-  "TM:tate": "G8nV5Dx7QsB2WpLcHt6k",
-  "TM:rock": "R3vZ7Cm1TdK9LjWfUe4o",
-  "TM:adele": "W2kP6Vf9HpLmYcNzDe7q",
-  "TM:taylor": "tS6w4Zq8VuKD2AdkEXo5",
-  "TM:beyonce": "Q9nT3Lp7JmXaZrFyTg1k",
-  "TM:cardi": "B5mD6Vp3XnLoHtKgWs4e",
-  "TM:nicki": "Y7wX2Jf9MqZcUpLeVt3o",
-  "TM:rihanna": "C2kR8Lt5NaPwJxMbEf6d",
-  "TM:angelina": "Z0qX1Yl7ArTmGcPeWo8r",
-  "TM:emma": "V3fH7Dn9KoBcWtXlMq2j",
-  "TM:queen": "E4sJ2Pt6LyRmXvNgTf9k",
-  "TM:oprah": "J1mK5Lw3ZoPaQtRcUs7e"
+  "TM:elon": "21m00Tcm4TlvDq8ikWAM",
+  "TM:trump": "AZnzlk1XvdvUeBnXmlld",
+  "TM:freeman": "EXAVITQu4vr4xnSDxMaL",
+  "TM:biden": "MF3mGyEYCl7XYWbV9V6O",
+  "TM:tate": "EXAVITQu4vr4xnSDxMaL",
+  "TM:rock": "21m00Tcm4TlvDq8ikWAM",
+
+  "TM:adele": "EXAVITQu4vr4xnSDxMaL",
+  "TM:taylor": "AZnzlk1XvdvUeBnXmlld",
+  "TM:beyonce": "MF3mGyEYCl7XYWbV9V6O",
+  "TM:cardi": "AZnzlk1XvdvUeBnXmlld",
+  "TM:nicki": "21m00Tcm4TlvDq8ikWAM",
+  "TM:rihanna": "EXAVITQu4vr4xnSDxMaL",
+  "TM:angelina": "MF3mGyEYCl7XYWbV9V6O",
+  "TM:emma": "AZnzlk1XvdvUeBnXmlld",
+  "TM:queen": "EXAVITQu4vr4xnSDxMaL",
+  "TM:oprah": "21m00Tcm4TlvDq8ikWAM",
 };
 
+// POST /api/tts - Generate speech
 app.post("/api/tts", async (req, res) => {
   try {
-    const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
-    const { text, voice_id } = req.body;
+    const { text, voiceId } = req.body;
 
-    const resolvedVoice = CELEB_VOICES[voice_id] || voice_id;
-    const used = charUsage[ip] || 0;
-    const newUsage = used + text.length;
+    const resolvedVoice = voiceMap[voiceId] || DEFAULT_VOICE_ID;
 
-    if (newUsage > 1000) {
-      return res.status(403).json({ error: "Free character limit reached." });
-    }
-
-    charUsage[ip] = newUsage;
-
-    const response = await axios.post(
-      `https://api.elevenlabs.io/v1/text-to-speech/${resolvedVoice}`,
-      {
-        text,
+    const response = await axios({
+      method: "POST",
+      url: `https://api.elevenlabs.io/v1/text-to-speech/${resolvedVoice}`,
+      headers: {
+        "xi-api-key": ELEVEN_API_KEY,
+        "Content-Type": "application/json",
+        "Accept": "audio/mpeg",
+      },
+      data: {
+        text: text || "Hello, world!",
         voice_settings: {
           stability: 0.75,
           similarity_boost: 0.75,
         },
       },
-      {
-        headers: {
-          "xi-api-key": process.env.ELEVENLABS_API_KEY,
-          "Content-Type": "application/json",
-          Accept: "audio/mpeg",
-        },
-        responseType: "arraybuffer",
-      }
-    );
+      responseType: "arraybuffer",
+    });
 
-    res.set({ "Content-Type": "audio/mpeg" });
-    res.send(response.data);
+    const audioPath = path.join(__dirname, "public", "output.mp3");
+    fs.writeFileSync(audioPath, response.data);
+    res.json({ success: true, url: "/output.mp3" });
   } catch (err) {
-    console.error(err?.response?.data || err.message);
-    res.status(500).json({ error: "Failed to generate audio." });
+    console.error(err.response?.data || err.message);
+    res.status(500).json({ success: false, message: "Failed to generate voice." });
   }
 });
 
-app.listen(port, () => {
-  console.log(`✅ Server running on http://localhost:${port}`);
+app.listen(PORT, () => {
+  console.log(`✅ Server running on http://localhost:${PORT}`);
 });
