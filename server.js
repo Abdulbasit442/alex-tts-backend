@@ -12,30 +12,33 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// Voice ID mapping
+// Inside server.js or wherever you map voice IDs:
+const defaultVoiceId = 'EXAVITQu4vr4xnSDxMaL'; // Rachel (free plan)
+
 const voiceMap = {
-  "TM:default": "EXAVITQu4vr4xnSDxMaL", // Replace with real voice_id from ElevenLabs
-  "TM:drake": "EXAVITQu4vr4xnSDxMaL",
-  "TM:kanye": "EXAVITQu4vr4xnSDxMaL",
-  "TM:obama": "EXAVITQu4vr4xnSDxMaL",
-  "TM:mrbeast": "EXAVITQu4vr4xnSDxMaL",
-  "TM:elon": "EXAVITQu4vr4xnSDxMaL",
-  "TM:trump": "EXAVITQu4vr4xnSDxMaL",
-  "TM:freeman": "EXAVITQu4vr4xnSDxMaL",
-  "TM:biden": "EXAVITQu4vr4xnSDxMaL",
-  "TM:tate": "EXAVITQu4vr4xnSDxMaL",
-  "TM:rock": "EXAVITQu4vr4xnSDxMaL",
-  "TM:adele": "EXAVITQu4vr4xnSDxMaL",
-  "TM:taylor": "EXAVITQu4vr4xnSDxMaL",
-  "TM:beyonce": "EXAVITQu4vr4xnSDxMaL",
-  "TM:cardi": "EXAVITQu4vr4xnSDxMaL",
-  "TM:nicki": "EXAVITQu4vr4xnSDxMaL",
-  "TM:rihanna": "EXAVITQu4vr4xnSDxMaL",
-  "TM:angelina": "EXAVITQu4vr4xnSDxMaL",
-  "TM:emma": "EXAVITQu4vr4xnSDxMaL",
-  "TM:queen": "EXAVITQu4vr4xnSDxMaL",
-  "TM:oprah": "EXAVITQu4vr4xnSDxMaL"
+  'TM:default': defaultVoiceId,
+  'TM:drake': defaultVoiceId,
+  'TM:kanye': defaultVoiceId,
+  'TM:obama': defaultVoiceId,
+  'TM:mrbeast': defaultVoiceId,
+  'TM:elon': defaultVoiceId,
+  'TM:trump': defaultVoiceId,
+  'TM:freeman': defaultVoiceId,
+  'TM:biden': defaultVoiceId,
+  'TM:tate': defaultVoiceId,
+  'TM:rock': defaultVoiceId,
+  'TM:adele': defaultVoiceId,
+  'TM:taylor': defaultVoiceId,
+  'TM:beyonce': defaultVoiceId,
+  'TM:cardi': defaultVoiceId,
+  'TM:nicki': defaultVoiceId,
+  'TM:rihanna': defaultVoiceId,
+  'TM:angelina': defaultVoiceId,
+  'TM:emma': defaultVoiceId,
+  'TM:queen': defaultVoiceId,
+  'TM:oprah': defaultVoiceId,
 };
+
 
 // ElevenLabs API key
 const elevenApiKey = process.env.ELEVENLABS_API_KEY;
